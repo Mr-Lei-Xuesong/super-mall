@@ -3,20 +3,29 @@
     <nav-bar class="home-nav">
       <div slot="center">购物街</div>
     </nav-bar>
-    <home-swiper :banners="banners"/>
-    <recommend-view :recommends="recommends"/>
-    <feature-view/>
-    <tab-control class="tab-control"
-                 :titles="['流行','新款','精选']"
-                 @tabClick="tabClick"/>
-    <goods-list :goods="showGoods"/>
+    <scroll class="content" ref="scroll"
+            :probe-type="3"
+            :pull-up-load="true"
+            @scroll="contentScroll"
+            @pullingUp="loadMore">
+      <home-swiper :banners="banners"/>
+      <recommend-view :recommends="recommends"/>
+      <feature-view/>
+      <tab-control class="tab-control"
+                   :titles="['流行','新款','精选']"
+                   @tabClick="tabClick"/>
+      <goods-list :goods="showGoods"/>
+    </scroll>
+    <back-top @click.native="backClick" v-show="isShowBackTop"/>
   </div>
 </template>
 
 <script>
   import NavBar from "components/common/navbar/NavBar";
+  import Scroll from "components/common/scroll/Scroll";
   import TabControl from "components/content/tabControl/TabControl";
   import GoodsList from "components/content/goods/GoodsList";
+  import BackTop from "components/content/backTop/BackTop";
 
   import HomeSwiper from "./childComps/HomeSwiper";
   import RecommendView from "./childComps/RecommendView";
@@ -32,7 +41,9 @@
       RecommendView,
       FeatureView,
       TabControl,
-      GoodsList
+      GoodsList,
+      Scroll,
+      BackTop
     },
     data() {
       return {
@@ -52,7 +63,8 @@
             list: []
           }
         },
-        currentType: 'pop'
+        currentType: 'pop',
+        isShowBackTop: false
       }
     },
     computed: {
@@ -85,6 +97,17 @@
             break;
         }
       },
+      //返回顶部
+      backClick() {
+        this.$refs.scroll.scrollTo(0, 0, 500);
+      },
+      //监听滚动位置
+      contentScroll(position) {
+        this.isShowBackTop = (-position.y) > 550;
+      },
+      loadMore() {
+        this.getHomeGoods(this.currentType)
+      },
       /**
        * 网络请求相关的方法
        */
@@ -99,6 +122,8 @@
         getHomeGoods(type, page).then(res => {
           this.goods[type].list.push(...res.data.list);
           this.goods[type].page += 1;
+          //加载更多数据
+          this.$refs.scroll.finishPullUp();
         })
       }
     }
@@ -108,6 +133,8 @@
 <style scoped>
   #home {
     padding-top: 44px;
+    height: 100vh;
+    position: relative;
   }
 
   .home-nav {
@@ -124,6 +151,14 @@
     position: sticky;
     top: 44px;
     z-index: 9;
-    background-color: white;
+  }
+
+  .content {
+    overflow: hidden;
+    position: absolute;
+    top: 44px;
+    bottom: 49px;
+    left: 0;
+    right: 0;
   }
 </style>
