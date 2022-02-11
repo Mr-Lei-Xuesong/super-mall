@@ -3,17 +3,21 @@
     <nav-bar class="home-nav">
       <div slot="center">购物街</div>
     </nav-bar>
+    <tab-control :titles="['流行','新款','精选']"
+                 @tabClick="tabClick"
+                 ref="tabControl1"
+                 class="tab-control" v-show="isTabFixed"/>
     <scroll class="content" ref="scroll"
             :probe-type="3"
             :pull-up-load="true"
             @scroll="contentScroll"
             @pullingUp="loadMore">
-      <home-swiper :banners="banners"/>
+      <home-swiper :banners="banners" @swiperImageLoad="swiperImageLoad"/>
       <recommend-view :recommends="recommends"/>
       <feature-view/>
-      <tab-control class="tab-control"
-                   :titles="['流行','新款','精选']"
-                   @tabClick="tabClick"/>
+      <tab-control :titles="['流行','新款','精选']"
+                   @tabClick="tabClick"
+                   ref="tabControl2"/>
       <goods-list :goods="showGoods"/>
     </scroll>
     <back-top @click.native="backClick" v-show="isShowBackTop"/>
@@ -33,6 +37,8 @@
 
   import {getHomeMultipleData, getHomeGoods} from "network/home";
 
+  import {itemListenerMixin} from 'common/mixin'
+
   export default {
     name: "Home",
     components: {
@@ -45,6 +51,7 @@
       Scroll,
       BackTop
     },
+    mixins: [itemListenerMixin],
     data() {
       return {
         banners: [],
@@ -64,13 +71,30 @@
           }
         },
         currentType: 'pop',
-        isShowBackTop: false
+        isShowBackTop: false,
+        tabOffsetTop: 0,
+        isTabFixed: false,
+        saveY: 0
       }
     },
     computed: {
       showGoods() {
         return this.goods[this.currentType].list;
       }
+    },
+    destroyed() {
+      console.log('home destroyed');
+    },
+    activated() {
+      this.$refs.scroll.scrollTo(0, this.saveY, 9);
+      this.$refs.scroll.refresh();
+    },
+    deactivated() {
+      //保存Y值
+      this.saveY = this.$refs.scroll.getScrollY();
+
+      //取消全局事件的监听
+      this.$bus.$off('itemImgLoad', this.itemImgListener)
     },
     created() {
       //1.请求多个数据
@@ -80,9 +104,11 @@
       this.getHomeGoods('new');
       this.getHomeGoods('sell');
     },
+    mounted() {
+    },
     methods: {
       /**
-       * 时间监听相关的方法
+       * 事件监听相关的方法
        */
       tabClick(index) {
         switch (index) {
@@ -96,6 +122,8 @@
             this.currentType = 'sell';
             break;
         }
+        this.$refs.tabControl1.currentIndex = index;
+        this.$refs.tabControl2.currentIndex = index;
       },
       //返回顶部
       backClick() {
@@ -103,10 +131,18 @@
       },
       //监听滚动位置
       contentScroll(position) {
+        //判断BackTop是否显示
         this.isShowBackTop = (-position.y) > 550;
+        //决定tabControl是否吸顶
+        this.isTabFixed = (-position.y) > this.tabOffsetTop
       },
+      //加载更多
       loadMore() {
         this.getHomeGoods(this.currentType)
+      },
+      //获取tabControl的offsetTop
+      swiperImageLoad() {
+        this.tabOffsetTop = this.$refs.tabControl2.$el.offsetTop;
       },
       /**
        * 网络请求相关的方法
@@ -122,7 +158,7 @@
         getHomeGoods(type, page).then(res => {
           this.goods[type].list.push(...res.data.list);
           this.goods[type].page += 1;
-          //加载更多数据
+          //完成上拉加载更多数据
           this.$refs.scroll.finishPullUp();
         })
       }
@@ -147,12 +183,6 @@
     z-index: 9;
   }
 
-  .tab-control {
-    position: sticky;
-    top: 44px;
-    z-index: 9;
-  }
-
   .content {
     overflow: hidden;
     position: absolute;
@@ -160,5 +190,10 @@
     bottom: 49px;
     left: 0;
     right: 0;
+  }
+
+  .tab-control {
+    position: relative;
+    z-index: 9;
   }
 </style>
