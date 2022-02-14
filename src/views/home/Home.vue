@@ -29,7 +29,6 @@
   import Scroll from "components/common/scroll/Scroll";
   import TabControl from "components/content/tabControl/TabControl";
   import GoodsList from "components/content/goods/GoodsList";
-  import BackTop from "components/content/backTop/BackTop";
 
   import HomeSwiper from "./childComps/HomeSwiper";
   import RecommendView from "./childComps/RecommendView";
@@ -37,7 +36,7 @@
 
   import {getHomeMultipleData, getHomeGoods} from "network/home";
 
-  import {itemListenerMixin} from 'common/mixin'
+  import {itemListenerMixin, backTopMixin} from 'common/mixin'
 
   export default {
     name: "Home",
@@ -48,10 +47,9 @@
       FeatureView,
       TabControl,
       GoodsList,
-      Scroll,
-      BackTop
+      Scroll
     },
-    mixins: [itemListenerMixin],
+    mixins: [itemListenerMixin, backTopMixin],
     data() {
       return {
         banners: [],
@@ -71,7 +69,6 @@
           }
         },
         currentType: 'pop',
-        isShowBackTop: false,
         tabOffsetTop: 0,
         isTabFixed: false,
         saveY: 0
@@ -83,7 +80,7 @@
       }
     },
     destroyed() {
-      console.log('home destroyed');
+
     },
     activated() {
       this.$refs.scroll.scrollTo(0, this.saveY, 9);
@@ -125,14 +122,10 @@
         this.$refs.tabControl1.currentIndex = index;
         this.$refs.tabControl2.currentIndex = index;
       },
-      //返回顶部
-      backClick() {
-        this.$refs.scroll.scrollTo(0, 0, 500);
-      },
       //监听滚动位置
       contentScroll(position) {
         //判断BackTop是否显示
-        this.isShowBackTop = (-position.y) > 550;
+        this.listenerShowBackTop(position);
         //决定tabControl是否吸顶
         this.isTabFixed = (-position.y) > this.tabOffsetTop
       },
